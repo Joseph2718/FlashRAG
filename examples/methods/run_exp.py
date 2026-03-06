@@ -5,6 +5,34 @@ from flashrag.utils import get_dataset
 import argparse
 
 
+def bm25_naive(args):
+    """Run naive RAG pipeline with BM25 retrieval (e.g. on HotpotQA)."""
+    save_note = "bm25-naive"
+    config_dict = {
+        "save_note": save_note,
+        "gpu_id": args.gpu_id,
+        "dataset_name": args.dataset_name,
+        "split": args.split,
+        "retrieval_method": "bm25",
+        "bm25_backend": "bm25s",
+    }
+    if getattr(args, "index_path", None):
+        config_dict["index_path"] = args.index_path
+    if getattr(args, "corpus_path", None):
+        config_dict["corpus_path"] = args.corpus_path
+    if getattr(args, "data_dir", None):
+        config_dict["data_dir"] = args.data_dir
+
+    from flashrag.pipeline import SequentialPipeline
+
+    config = Config("my_config.yaml", config_dict)
+    all_split = get_dataset(config)
+    test_data = all_split[args.split]
+
+    pipeline = SequentialPipeline(config)
+    result = pipeline.run(test_data)
+
+
 def naive(args):
     save_note = "naive"
     config_dict = {"save_note": save_note, "gpu_id": args.gpu_id, "dataset_name": args.dataset_name, "split": args.split}
@@ -778,9 +806,13 @@ if __name__ == "__main__":
     parser.add_argument("--split", type=str)
     parser.add_argument("--dataset_name", type=str)
     parser.add_argument("--gpu_id", type=str)
+    parser.add_argument("--index_path", type=str, default=None, help="BM25 index path (for bm25-naive)")
+    parser.add_argument("--corpus_path", type=str, default=None, help="Corpus path for BM25 (for bm25-naive)")
+    parser.add_argument("--data_dir", type=str, default=None, help="Data directory override")
 
     
     func_dict = {
+        "bm25-naive": bm25_naive,
         "AAR-contriever": aar,
         "AAR-ANCE": aar,
         "naive": naive,

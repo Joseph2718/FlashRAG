@@ -12,9 +12,11 @@ extras_require = {
     'core': requirements,
     'retriever': ['pyserini', 'sentence-transformers>=3.0.1'],
     'generator': ['vllm'],
-    'multimodal': ['timm', 'torchvision', 'pillow', 'qwen_vl_utils']
+    'multimodal': ['timm', 'torchvision', 'pillow', 'qwen_vl_utils'],
+    'chunking': ['chonkie>=1.0.2, <1.1.0'],
 }
 extras_require['full'] = sum(extras_require.values(), [])
+extras_require['full'] = list(dict.fromkeys(extras_require['full']))  # dedupe
 
 setup(
     name="flashrag_dev",
