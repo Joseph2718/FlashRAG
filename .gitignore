@@ -6,3 +6,12 @@ build/
 dist/*
 upload_pypi.sh
 tests/*
+.DS_Store
+*.ipynb_checkpoints
+indexes_wiki/
+retrieval2-master/
+2021-SIGIR-plackett-luce-master 2/
+OptiSet_submit/
+rag_frameworks_progress (3).ipynb
+rag_frameworks_updating (2).ipynb
+rag_frameworks_wip.ipynb
