@@ -3,7 +3,7 @@
 Setup script for running BM25 retrieval on HotpotQA.
 
 This script:
-1. Downloads HotpotQA dev split from FlashRAG datasets (HuggingFace)
+1. Downloads HotpotQA train/dev splits from FlashRAG datasets (HuggingFace)
 2. Uses a corpus (general_knowledge or wiki) - download wiki from FlashRAG if needed
 3. Builds BM25 index using FlashRAG's framework index builder
 
@@ -77,8 +77,8 @@ def download_wiki_corpus(corpus_dir: str) -> str:
         sys.exit(1)
 
 
-def download_hotpotqa(data_dir: str):
-    """Download HotpotQA dev split from HuggingFace FlashRAG datasets."""
+def download_hotpotqa(data_dir: str, splits=("train", "dev")):
+    """Download HotpotQA labeled splits from HuggingFace FlashRAG datasets."""
     try:
         from huggingface_hub import hf_hub_download
     except ImportError:
@@ -87,26 +87,33 @@ def download_hotpotqa(data_dir: str):
 
     hotpotqa_dir = os.path.join(data_dir, "hotpotqa")
     os.makedirs(hotpotqa_dir, exist_ok=True)
-    dev_path = os.path.join(hotpotqa_dir, "dev.jsonl")
+    downloaded_paths = {}
+    for split in splits:
+        split_path = os.path.join(hotpotqa_dir, f"{split}.jsonl")
+        if os.path.exists(split_path):
+            print(f"HotpotQA {split}.jsonl already exists at {split_path}")
+            downloaded_paths[split] = split_path
+            continue
 
-    if os.path.exists(dev_path):
-        print(f"HotpotQA dev.jsonl already exists at {dev_path}")
-        return dev_path
+        print(f"Downloading HotpotQA {split}.jsonl from RUC-NLPIR/FlashRAG_datasets...")
+        try:
+            path = hf_hub_download(
+                repo_id="RUC-NLPIR/FlashRAG_datasets",
+                filename=f"hotpotqa/{split}.jsonl",
+                repo_type="dataset",
+                local_dir=data_dir,
+            )
+            print(f"Downloaded to {path}")
+            downloaded_paths[split] = path
+        except Exception as e:
+            print(f"Download failed: {e}")
+            print(
+                "Please manually download the labeled HotpotQA splits from "
+                "https://huggingface.co/datasets/RUC-NLPIR/FlashRAG_datasets/tree/main/hotpotqa"
+            )
+            sys.exit(1)
 
-    print("Downloading HotpotQA dev.jsonl from RUC-NLPIR/FlashRAG_datasets...")
-    try:
-        path = hf_hub_download(
-            repo_id="RUC-NLPIR/FlashRAG_datasets",
-            filename="hotpotqa/dev.jsonl",
-            repo_type="dataset",
-            local_dir=data_dir,
-        )
-        print(f"Downloaded to {path}")
-        return path
-    except Exception as e:
-        print(f"Download failed: {e}")
-        print("Please manually download hotpotqa/dev.jsonl from https://huggingface.co/datasets/RUC-NLPIR/FlashRAG_datasets")
-        sys.exit(1)
+    return downloaded_paths
 
 
 def build_bm25_index(corpus_path: str, save_dir: str, backend: str = "bm25s"):
@@ -137,7 +144,10 @@ def main():
     parser.add_argument("--corpus_path", type=str, default=None,
                         help="Path to corpus jsonl. Default: examples/quick_start/indexes/general_knowledge.jsonl")
     parser.add_argument("--download_dataset", action="store_true",
-                        help="Download HotpotQA from HuggingFace")
+                        help="Download HotpotQA labeled train/dev splits from HuggingFace")
+    parser.add_argument("--dataset_splits", nargs="+", default=["train", "dev"],
+                        help="HotpotQA labeled splits to download (default: train dev). "
+                             "There is no local labeled test.jsonl in the FlashRAG packaging.")
     parser.add_argument("--use_wiki_corpus", action="store_true",
                         help="Download Wikipedia corpus (wiki18_100w) from HuggingFace for HotpotQA")
     parser.add_argument("--skip_index", action="store_true",
@@ -163,7 +173,7 @@ def main():
     os.makedirs(args.index_dir, exist_ok=True)
 
     if args.download_dataset:
-        download_hotpotqa(args.data_dir)
+        download_hotpotqa(args.data_dir, splits=tuple(args.dataset_splits))
 
     if not args.skip_index:
         index_path = build_bm25_index(corpus_path, args.index_dir, args.bm25_backend)
@@ -183,6 +193,7 @@ python run_exp.py --method_name bm25-naive \\
     --corpus_path {os.path.abspath(corpus_path)} \\
     --data_dir {os.path.abspath(args.data_dir)}
 """)
+    print("Downloaded labeled HotpotQA splits: train/dev (no local labeled test split is packaged here).")
     print("Note: Ensure my_config.yaml exists in examples/methods/ with generator paths configured.")
 
 
